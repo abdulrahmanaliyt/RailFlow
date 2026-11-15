@@ -1,22 +1,68 @@
+
 from fastapi import FastAPI
 
+from app.api.stations import router as station_router
+
+
+tags_metadata = [
+    {
+        "name": "Stations",
+        "description": (
+            "Manage railway stations, including creation, "
+            "retrieval, updating and deletion."
+        ),
+    },
+    {
+        "name": "Trains",
+        "description": "Manage train information and services.",
+    },
+    {
+        "name": "Routes",
+        "description": "Manage train routes and station stops.",
+    },
+    {
+        "name": "Schedules",
+        "description": "Manage scheduled train journeys.",
+    },
+    {
+        "name": "Bookings",
+        "description": "Manage passenger reservations.",
+    },
+    {
+        "name": "Authentication",
+        "description": "User registration, login and authentication.",
+    },
+]
+
 app = FastAPI(
-    title="RailFlow API",
-    description="Railway Reservation and Management System",
-    version="0.1.0"
+    title="RailFlow — Railway Reservation System API",
+    description="""
+    ## About RailFlow
+
+    RailFlow is a railway reservation backend built using
+    FastAPI, SQLAlchemy and PostgreSQL.
+
+    ### Core modules
+
+    - User authentication
+    - Station and train management
+    - Route and schedule management
+    - Seat availability
+    - Ticket booking
+    - Payment and cancellation
+    """,
+    version="1.0.0",
+    openapi_tags=tags_metadata,
 )
 
-
-@app.get("/")
-def home():
-    return {
-        "message": "Welcome to RailFlow API",
-        "status": "running"
-    }
+app.include_router(station_router)
 
 
-@app.get("/health")
-def health_check():
-    return {
-        "status": "healthy"
-    }
+@app.get(
+    "/",
+    tags=["General"],
+    summary="API health welcome endpoint",
+    description="Returns a welcome message confirming the API is accessible.",
+)
+def root():
+    return {"message": "Welcome to RailFlow API"}
