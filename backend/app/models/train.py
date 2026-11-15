@@ -1,3 +1,5 @@
+import sqlalchemy as sa
+
 from sqlalchemy import Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,6 +28,7 @@ class Train(Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
+        server_default=sa.true(),
         nullable=False
     )
     
