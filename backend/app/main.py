@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from app.api.stations import router as station_router
 from app.api.trains import router as train_router
 from app.api.routes import router as route_router
+from app.api.route_stops import router as route_stop_router
 
 tags_metadata = [
     {
@@ -59,7 +60,7 @@ app = FastAPI(
 app.include_router(station_router)
 app.include_router(train_router)
 app.include_router(route_router)
-
+app.include_router(route_stop_router)
 
 @app.get(
     "/",

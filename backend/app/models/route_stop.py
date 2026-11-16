@@ -22,6 +22,11 @@ class RouteStop(Base):
             "stop_sequence > 0",
             name="positive_stop_sequence"
         ),
+        UniqueConstraint(
+            "route_id",
+            "station_id",
+            name="uq_route_stops_route_station"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
