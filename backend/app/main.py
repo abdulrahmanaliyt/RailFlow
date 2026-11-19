@@ -7,6 +7,7 @@ from app.api.search import router as search_router
 from app.api.stations import router as station_router
 from app.api.train_schedules import router as schedule_router
 from app.api.trains import router as train_router
+from app.api import availability
 
 
 tags_metadata = [
@@ -57,6 +58,10 @@ tags_metadata = [
         "name": "Route Segments",
         "description": "Generate and inspect consecutive segments of train routes.",
     },
+    {
+        "name": "Seat Availability",
+        "description": "Check seat availability for a particular train journey.",
+    },
 ]
 
 app = FastAPI(
@@ -88,6 +93,7 @@ app.include_router(schedule_router)
 app.include_router(search_router)
 app.include_router(inventory.router)
 app.include_router(route_segments.router)
+app.include_router(availability.router)
 
 
 @app.get(

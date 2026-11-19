@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
@@ -8,7 +10,6 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime
 
 from app.db.base import Base
 
@@ -21,6 +22,10 @@ class SeatSegmentReservation(Base):
             "status IN ('HELD', 'CONFIRMED', 'CANCELLED', 'EXPIRED')",
             name="valid_reservation_status",
         ),
+        CheckConstraint(
+            "status != 'HELD' OR expires_at IS NOT NULL",
+            name="held_reservation_requires_expiry",
+        ),
         Index(
             "uq_active_seat_segment",
             "schedule_id",
@@ -31,14 +36,8 @@ class SeatSegmentReservation(Base):
                 "status IN ('HELD', 'CONFIRMED')"
             ),
         ),
-        Index(
-            "ix_reservations_booking_id",
-            "booking_id",
-        ),
-        Index(
-            "ix_reservations_passenger_id",
-            "passenger_id",
-        ),
+        Index("ix_reservations_booking_id", "booking_id"),
+        Index("ix_reservations_passenger_id", "passenger_id"),
         Index(
             "ix_reservations_schedule_segment",
             "schedule_id",
