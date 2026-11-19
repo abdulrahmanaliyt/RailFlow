@@ -5,6 +5,7 @@ from app.api.stations import router as station_router
 from app.api.trains import router as train_router
 from app.api.routes import router as route_router
 from app.api.route_stops import router as route_stop_router
+from app.api.train_schedules import router as schedule_router
 
 tags_metadata = [
     {
@@ -21,6 +22,10 @@ tags_metadata = [
     {
         "name": "Routes",
         "description": "Manage train routes and station stops.",
+    },
+    {
+        "name": "Route Stops",
+        "description": "Manage stations and their sequence within train routes.",
     },
     {
         "name": "Schedules",
@@ -61,6 +66,7 @@ app.include_router(station_router)
 app.include_router(train_router)
 app.include_router(route_router)
 app.include_router(route_stop_router)
+app.include_router(schedule_router)
 
 @app.get(
     "/",

@@ -76,6 +76,11 @@ def get_stops_by_route(
     route_id: int,
     db: Session = Depends(get_db)
 ):
+    if not route_stop_service.route_exists(db, route_id):
+        raise HTTPException(
+            status_code=404,
+            detail="Train route not found"
+        )
     return route_stop_service.get_stops_by_route(db, route_id)
 
 @router.put(

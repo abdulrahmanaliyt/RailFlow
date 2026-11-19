@@ -36,3 +36,7 @@ class TrainRoute(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
+    
+    schedules: Mapped[list["TrainSchedule"]] = relationship(
+        back_populates="route"
+    )

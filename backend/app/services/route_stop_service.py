@@ -20,6 +20,11 @@ def get_all_route_stops(db: Session):
 
     return db.scalars(statement).all()
 
+from app.models import RouteStop, TrainRoute
+
+def route_exists(db: Session, route_id: int) -> bool:
+    return db.get(TrainRoute, route_id) is not None
+
 def get_route_stop_by_id(db: Session, stop_id: int):
     return db.get(RouteStop, stop_id)
 

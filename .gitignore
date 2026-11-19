@@ -24,3 +24,5 @@ Thumbs.db
 
 # Local course notes
 docs/CourseTour.md
+# Backup archives
+*.zip
