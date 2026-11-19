@@ -1,18 +1,24 @@
-
 from fastapi import FastAPI
 
-from app.api.stations import router as station_router
-from app.api.trains import router as train_router
-from app.api.routes import router as route_router
+from app.api import inventory, route_segments
 from app.api.route_stops import router as route_stop_router
+from app.api.routes import router as route_router
+from app.api.search import router as search_router
+from app.api.stations import router as station_router
 from app.api.train_schedules import router as schedule_router
+from app.api.trains import router as train_router
+
 
 tags_metadata = [
+    {
+        "name": "General",
+        "description": "Service health and welcome endpoints.",
+    },
     {
         "name": "Stations",
         "description": (
             "Manage railway stations, including creation, "
-            "retrieval, updating and deletion."
+            "retrieval, updating, and deletion."
         ),
     },
     {
@@ -37,27 +43,39 @@ tags_metadata = [
     },
     {
         "name": "Authentication",
-        "description": "User registration, login and authentication.",
+        "description": "User registration, login, and authentication.",
+    },
+    {
+        "name": "Train Search",
+        "description": "Search scheduled trains between two stations.",
+    },
+    {
+        "name": "Inventory",
+        "description": "Manage train coaches and their seats.",
+    },
+    {
+        "name": "Route Segments",
+        "description": "Generate and inspect consecutive segments of train routes.",
     },
 ]
 
 app = FastAPI(
     title="RailFlow — Railway Reservation System API",
     description="""
-    ## About RailFlow
+## About RailFlow
 
-    RailFlow is a railway reservation backend built using
-    FastAPI, SQLAlchemy and PostgreSQL.
+RailFlow is a railway reservation backend built using
+FastAPI, SQLAlchemy, and PostgreSQL.
 
-    ### Core modules
+### Core modules
 
-    - User authentication
-    - Station and train management
-    - Route and schedule management
-    - Seat availability
-    - Ticket booking
-    - Payment and cancellation
-    """,
+- User authentication
+- Station and train management
+- Route and schedule management
+- Seat availability
+- Ticket booking
+- Payment and cancellation
+""",
     version="1.0.0",
     openapi_tags=tags_metadata,
 )
@@ -67,6 +85,10 @@ app.include_router(train_router)
 app.include_router(route_router)
 app.include_router(route_stop_router)
 app.include_router(schedule_router)
+app.include_router(search_router)
+app.include_router(inventory.router)
+app.include_router(route_segments.router)
+
 
 @app.get(
     "/",
@@ -74,5 +96,5 @@ app.include_router(schedule_router)
     summary="API health welcome endpoint",
     description="Returns a welcome message confirming the API is accessible.",
 )
-def root():
+def root() -> dict[str, str]:
     return {"message": "Welcome to RailFlow API"}
