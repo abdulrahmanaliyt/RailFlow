@@ -43,14 +43,9 @@ class BookingConflictError(Exception):
     pass
 
 
-# --------------------------------------------------
-# 1. Generate a unique PNR
-# --------------------------------------------------
-
+# Generate a unique PNR
 def generate_pnr(db: Session) -> str:
-
     for _ in range(10):
-
         pnr = "".join(
             choice(PNR_CHARACTERS)
             for _ in range(10)
@@ -70,15 +65,11 @@ def generate_pnr(db: Session) -> str:
     )
 
 
-# --------------------------------------------------
-# 2. Validate schedule
-# --------------------------------------------------
-
+# Validate schedule, route, and train availability
 def get_valid_schedule(
     db: Session,
     schedule_id: int
 ):
-
     schedule = db.get(
         TrainSchedule,
         schedule_id
@@ -117,17 +108,13 @@ def get_valid_schedule(
     return schedule, route, train
 
 
-# --------------------------------------------------
-# 3. Validate origin and destination
-# --------------------------------------------------
-
+# Validate active origin and destination stations and route stop order
 def get_valid_journey(
     db: Session,
     route_id: int,
     origin_code: str,
     destination_code: str
 ):
-
     origin_code = origin_code.strip().upper()
     destination_code = destination_code.strip().upper()
 
@@ -136,26 +123,29 @@ def get_valid_journey(
             "Origin and destination cannot be the same."
         )
 
+    # Only active stations can be used for new bookings
     origin_station = db.scalar(
         select(Station).where(
-            Station.station_code == origin_code
+            Station.station_code == origin_code,
+            Station.is_active.is_(True),
         )
     )
 
     destination_station = db.scalar(
         select(Station).where(
-            Station.station_code == destination_code
+            Station.station_code == destination_code,
+            Station.is_active.is_(True),
         )
     )
 
     if origin_station is None:
         raise BookingNotFoundError(
-            f"Origin station '{origin_code}' not found."
+            f"Active origin station '{origin_code}' not found."
         )
 
     if destination_station is None:
         raise BookingNotFoundError(
-            f"Destination station '{destination_code}' not found."
+            f"Active destination station '{destination_code}' not found."
         )
 
     origin_stop = db.scalar(
@@ -198,17 +188,13 @@ def get_valid_journey(
     )
 
 
-# --------------------------------------------------
-# 4. Get and validate required route segments
-# --------------------------------------------------
-
+# Get and validate required route segments between origin and destination
 def get_required_segments(
     db: Session,
     route_id: int,
     origin_stop: RouteStop,
     destination_stop: RouteStop
 ):
-
     route_stops = db.scalars(
         select(RouteStop)
         .where(RouteStop.route_id == route_id)
@@ -238,7 +224,6 @@ def get_required_segments(
     ]
 
     if actual_pairs != expected_pairs:
-
         raise BookingConflictError(
             "Route segments are missing or inconsistent. "
             "Repair the route segments before booking."
@@ -262,7 +247,6 @@ def get_required_segments(
     ]
 
     if not required_segments:
-
         raise BookingValidationError(
             "No segments found for this journey."
         )
@@ -270,15 +254,11 @@ def get_required_segments(
     return required_segments
 
 
-# --------------------------------------------------
-# 5. Expire old holds within this transaction
-# --------------------------------------------------
-
+# Expire old holds within this transaction
 def expire_old_holds(
     db: Session,
     schedule_id: int
 ):
-
     db.execute(
         update(SeatSegmentReservation)
         .where(
@@ -297,20 +277,12 @@ def expire_old_holds(
     )
 
 
-# --------------------------------------------------
-# 6. Validate and lock selected seats
-# --------------------------------------------------
-
+# Validate and lock selected seats in sorted order to reduce deadlock risk
 def validate_and_lock_seats(
     db: Session,
     train_id: int,
     seat_ids: list[int]
 ):
-
-    # Lock seats in sorted order.
-    # This helps reduce deadlock risk when
-    # multiple users request multiple seats.
-
     sorted_seat_ids = sorted(seat_ids)
 
     statement = (
@@ -332,7 +304,6 @@ def validate_and_lock_seats(
     rows = db.execute(statement).all()
 
     if len(rows) != len(sorted_seat_ids):
-
         raise BookingValidationError(
             "One or more selected seats are invalid, "
             "inactive, or do not belong to this train."
@@ -344,17 +315,13 @@ def validate_and_lock_seats(
     }
 
 
-# --------------------------------------------------
-# 7. Check seat availability for requested segments
-# --------------------------------------------------
-
+# Check for active seat reservations across required segments
 def check_seat_conflicts(
     db: Session,
     schedule_id: int,
     seat_ids: list[int],
     segment_ids: list[int]
 ):
-
     conflicts = db.scalars(
         select(SeatSegmentReservation)
         .where(
@@ -373,7 +340,6 @@ def check_seat_conflicts(
     ).all()
 
     if conflicts:
-
         raise BookingConflictError(
             "One or more selected seats are no longer "
             "available for your complete journey. "
@@ -381,40 +347,31 @@ def check_seat_conflicts(
         )
 
 
-# --------------------------------------------------
-# 8. Create complete booking transaction
-# --------------------------------------------------
-
+# Create a booking, passengers, and held segment reservations in one transaction
 def create_booking(
     db: Session,
     current_user: User,
     booking_data
 ):
-
     seat_ids = [
         passenger.seat_id
         for passenger in booking_data.passengers
     ]
 
-    # A seat cannot be selected twice in the same request.
-
+    # Each passenger must receive a distinct seat
     if len(seat_ids) != len(set(seat_ids)):
-
         raise BookingValidationError(
             "Each passenger must have a different seat."
         )
 
     try:
-
-        # A. Validate schedule, route and train
-
+        # Validate schedule, route, and train
         schedule, route, train = get_valid_schedule(
             db,
             booking_data.schedule_id
         )
 
-        # B. Validate journey
-
+        # Validate active origin and destination stations and stops
         (
             origin_station,
             destination_station,
@@ -427,8 +384,7 @@ def create_booking(
             booking_data.destination_station_code
         )
 
-        # C. Determine route segments
-
+        # Determine required route segments
         required_segments = get_required_segments(
             db,
             route.id,
@@ -441,23 +397,20 @@ def create_booking(
             for segment in required_segments
         ]
 
-        # D. Expire stale holds inside this transaction
-
+        # Expire stale holds inside this transaction
         expire_old_holds(
             db,
             schedule.id
         )
 
-        # E. Lock the seats
-
+        # Lock selected seats
         locked_seats = validate_and_lock_seats(
             db,
             train.id,
             seat_ids
         )
 
-        # F. Verify availability across every segment
-
+        # Verify no active conflicts on any required segment
         check_seat_conflicts(
             db,
             schedule.id,
@@ -465,11 +418,8 @@ def create_booking(
             segment_ids
         )
 
-        # G. Generate PNR
-
+        # Generate PNR and create booking record
         pnr = generate_pnr(db)
-
-        # H. Create booking
 
         booking = Booking(
             pnr=pnr,
@@ -483,12 +433,10 @@ def create_booking(
 
         db.add(booking)
 
-        # Assign an ID before inserting passengers
-
+        # Flush so booking.id is available for child rows
         db.flush()
 
-        # I. Create passengers and their seat reservations
-
+        # Create passenger records and held reservations per segment
         booked_passengers = []
 
         expires_at = (
@@ -499,7 +447,6 @@ def create_booking(
         )
 
         for passenger_data in booking_data.passengers:
-
             passenger = BookingPassenger(
                 booking_id=booking.id,
                 full_name=passenger_data.full_name.strip(),
@@ -516,7 +463,6 @@ def create_booking(
             ]
 
             for segment in required_segments:
-
                 reservation = SeatSegmentReservation(
                     booking_id=booking.id,
                     passenger_id=passenger.id,
@@ -537,15 +483,8 @@ def create_booking(
                 }
             )
 
-        # J. Commit the entire transaction
-
         db.commit()
-
-        # K. Refresh the booking
-
         db.refresh(booking)
-
-        # L. Return booking data
 
         return build_booking_response(
             booking=booking,
@@ -555,9 +494,7 @@ def create_booking(
         )
 
     except IntegrityError:
-
         db.rollback()
-
         raise BookingConflictError(
             "A seat was reserved by another request "
             "or a database constraint was violated. "
@@ -565,27 +502,20 @@ def create_booking(
         )
 
     except Exception:
-
         db.rollback()
-
         raise
 
 
-# --------------------------------------------------
-# 9. Build response
-# --------------------------------------------------
-
+# Format booking response payload
 def build_booking_response(
     booking,
     origin_station,
     destination_station,
     booked_passengers
 ):
-
     passengers_response = []
 
     for item in booked_passengers:
-
         passenger = item["passenger"]
         seat = item["seat"]
         coach = item["coach"]
@@ -618,16 +548,12 @@ def build_booking_response(
     }
 
 
-# --------------------------------------------------
-# 10. Retrieve booking with ownership verification
-# --------------------------------------------------
-
+# Retrieve a booking owned by current_user
 def get_booking_by_id(
     db: Session,
     booking_id: int,
     current_user: User
 ):
-
     booking = db.scalar(
         select(Booking).where(
             Booking.id == booking_id,
@@ -636,7 +562,6 @@ def get_booking_by_id(
     )
 
     if booking is None:
-
         raise BookingNotFoundError(
             "Booking not found."
         )
@@ -678,15 +603,11 @@ def get_booking_by_id(
         destination_stop.station_id
     )
 
-    # One seat has reservations on several route segments.
-    # Return each passenger/seat only once.
-
+    # Map each passenger to a single seat across multi-segment reservations
     passenger_seat_map = {}
 
     for reservation in reservations:
-
         if reservation.passenger_id not in passenger_seat_map:
-
             passenger_seat_map[
                 reservation.passenger_id
             ] = reservation.seat_id
@@ -694,7 +615,6 @@ def get_booking_by_id(
     passengers_response = []
 
     for passenger in passengers:
-
         seat_id = passenger_seat_map.get(
             passenger.id
         )
@@ -708,8 +628,6 @@ def get_booking_by_id(
             Coach,
             seat.coach_id
         )
-
-        # Get reservation status for this passenger
 
         passenger_reservations = [
             reservation
@@ -752,12 +670,11 @@ def get_booking_by_id(
     }
 
 
-# 11. Get current user's booking history
+# Get current user's booking history
 def get_my_bookings(
     db: Session,
     current_user: User
 ):
-
     bookings = db.scalars(
         select(Booking)
         .where(

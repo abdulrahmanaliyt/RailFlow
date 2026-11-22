@@ -1,4 +1,4 @@
-from sqlalchemy import String
+from sqlalchemy import String,Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -36,3 +36,10 @@ class Station(Base):
     route_stops: Mapped[list["RouteStop"]] = relationship(
         back_populates="station"
     )
+    
+    is_active: Mapped[bool] = mapped_column(
+    Boolean,
+    default=True,
+    server_default="true",
+    nullable=False,
+)

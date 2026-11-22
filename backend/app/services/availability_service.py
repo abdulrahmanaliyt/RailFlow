@@ -57,16 +57,18 @@ def get_station(db: Session, station_code: str):
     normalized_code = station_code.strip().upper()
 
     station = db.scalar(
-        select(Station).where(Station.station_code == normalized_code)
+        select(Station).where(
+            Station.station_code == normalized_code,
+            Station.is_active.is_(True),
+        )
     )
 
     if not station:
         raise NotFoundError(
-            f"Station '{normalized_code}' does not exist."
+            f"Active station '{normalized_code}' not found."
         )
 
     return station
-
 
 def get_journey_stops(
     db: Session,

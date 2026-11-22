@@ -12,6 +12,7 @@ from app.api.bookings import router as booking_router
 from app.api.payments import router as payment_router
 from app.api.cancellations import router as cancellation_router
 from app.api.admin import router as admin_router
+from app.api.admin_stations import router as admin_stations_router
 
 
 tags_metadata = [
@@ -25,9 +26,13 @@ tags_metadata = [
     },
     {
         "name": "Stations",
+        "description": "Browse active railway stations.",
+    },
+    {
+        "name": "Admin Stations",
         "description": (
-            "Manage railway stations, including creation, "
-            "retrieval, updating, and deletion."
+            "Admin management of railway stations, including creation, "
+            "updating, activation, and soft deactivation."
         ),
     },
     {
@@ -102,6 +107,7 @@ def root() -> dict[str, str]:
 
 app.include_router(auth_router)
 app.include_router(station_router)
+app.include_router(admin_stations_router)
 app.include_router(train_router)
 app.include_router(route_router)
 app.include_router(route_stop_router)

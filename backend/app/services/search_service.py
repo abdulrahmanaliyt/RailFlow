@@ -28,7 +28,8 @@ def validate_station_codes(
 
     origin = db.scalar(
         select(Station).where(
-            Station.station_code == origin_code
+            Station.station_code == origin_code,
+            Station.is_active.is_(True),
         )
     )
 
@@ -39,7 +40,8 @@ def validate_station_codes(
 
     destination = db.scalar(
         select(Station).where(
-            Station.station_code == destination_code
+            Station.station_code == destination_code,
+        Station.is_active.is_(True),
         )
     )
 
