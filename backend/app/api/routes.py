@@ -25,28 +25,38 @@ router = APIRouter(
     tags=["Routes"]
 )
 
-
 @router.post(
     "/",
     response_model=RouteResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a train route",
-    description="Create a route associated with an existing train."
+    description="Create a route associated with an existing train.",
 )
 def create_route_endpoint(
     route_data: RouteCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     try:
         return create_route(db, route_data)
+
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        )
 
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=409,
-            detail="Invalid train ID or duplicate route name for this train."
+            detail="Invalid train ID or duplicate route name for this train.",
         )
-
 
 @router.get(
     "/",

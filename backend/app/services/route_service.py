@@ -2,11 +2,20 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import TrainRoute
+from app.models import Train, TrainRoute
 from app.schemas.route import RouteCreate, RouteUpdate
 
 
 def create_route(db: Session, route_data: RouteCreate):
+
+    train = db.get(Train, route_data.train_id)
+
+    if train is None:
+        raise LookupError("Train not found.")
+
+    if not train.is_active:
+        raise ValueError("Cannot create a route for an inactive train.")
+
     route = TrainRoute(**route_data.model_dump())
 
     db.add(route)
@@ -14,7 +23,6 @@ def create_route(db: Session, route_data: RouteCreate):
     db.refresh(route)
 
     return route
-
 
 def get_all_routes(db: Session):
     statement = select(TrainRoute).order_by(TrainRoute.id)
