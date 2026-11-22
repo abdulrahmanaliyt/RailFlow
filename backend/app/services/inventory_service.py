@@ -114,6 +114,57 @@ def create_seat(db: Session, coach_id: int, data):
         ) from exc
 
 
+def create_seats_bulk(db: Session, coach_id: int, data):
+    coach = db.get(Coach, coach_id)
+
+    if not coach:
+        raise NotFoundError("Coach not found.")
+
+    if not coach.is_active:
+        raise ConflictError("Cannot add seats to an inactive coach.")
+
+    normalized_numbers = [
+        item.seat_number.strip().upper() for item in data.seats
+    ]
+
+    if len(normalized_numbers) != len(set(normalized_numbers)):
+        raise ConflictError("Duplicate seat numbers provided in request.")
+
+    existing_numbers = db.scalars(
+        select(Seat.seat_number).where(
+            Seat.coach_id == coach_id,
+            Seat.seat_number.in_(normalized_numbers),
+        )
+    ).all()
+
+    if existing_numbers:
+        raise ConflictError(
+            "These seat numbers already exist in this coach: "
+            + ", ".join(existing_numbers)
+        )
+
+    seats = [
+        Seat(
+            coach_id=coach_id,
+            seat_number=item.seat_number.strip().upper(),
+            berth_type=item.berth_type,
+        )
+        for item in data.seats
+    ]
+
+    try:
+        db.add_all(seats)
+        db.commit()
+        for seat in seats:
+            db.refresh(seat)
+        return seats
+    except IntegrityError as exc:
+        db.rollback()
+        raise ConflictError(
+            "One or more seats already exist in this coach."
+        ) from exc
+
+
 def get_coach_seats(db: Session, coach_id: int):
     if not db.get(Coach, coach_id):
         raise NotFoundError("Coach not found.")

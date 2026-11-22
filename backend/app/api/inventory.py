@@ -7,6 +7,7 @@ from app.schemas.inventory import (
     CoachUpdate,
     CoachResponse,
     SeatCreate,
+    SeatBulkCreate,
     SeatUpdate,
     SeatResponse,
 )
@@ -125,6 +126,23 @@ def add_seat(
 ):
     try:
         return service.create_seat(db, coach_id, payload)
+    except (service.NotFoundError, service.ConflictError) as exc:
+        handle_service_error(exc)
+
+
+@router.post(
+    "/coaches/{coach_id}/seats/bulk",
+    response_model=list[SeatResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Add multiple seats to a coach",
+)
+def add_seats_bulk(
+    coach_id: int,
+    payload: SeatBulkCreate,
+    db: Session = Depends(get_db),
+):
+    try:
+        return service.create_seats_bulk(db, coach_id, payload)
     except (service.NotFoundError, service.ConflictError) as exc:
         handle_service_error(exc)
 

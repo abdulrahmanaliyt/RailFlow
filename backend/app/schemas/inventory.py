@@ -39,6 +39,10 @@ class SeatCreate(BaseModel):
     berth_type: BerthType
 
 
+class SeatBulkCreate(BaseModel):
+    seats: list[SeatCreate] = Field(min_length=1)
+
+
 class SeatUpdate(BaseModel):
     seat_number: str = Field(min_length=1, max_length=10)
     berth_type: BerthType

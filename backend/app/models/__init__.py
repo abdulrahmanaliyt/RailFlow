@@ -13,6 +13,9 @@ from app.models.booking import Booking
 from app.models.booking_passenger import BookingPassenger
 from app.models.seat_segment_reservation import SeatSegmentReservation
 from app.models.payment import Payment
+from app.models.cancellation import Cancellation
+from app.models.refund import Refund
+
 
 __all__ = [
     "User",
@@ -27,5 +30,7 @@ __all__ = [
     "Booking",
     "BookingPassenger",
     "SeatSegmentReservation",
-    "Payment"
+    "Payment",
+    "Cancellation",
+    "Refund",
 ]
