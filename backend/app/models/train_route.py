@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -40,3 +40,10 @@ class TrainRoute(Base):
     schedules: Mapped[list["TrainSchedule"]] = relationship(
         back_populates="route"
     )
+    
+    is_active: Mapped[bool] = mapped_column(
+    Boolean,
+    default=True,
+    server_default="true",
+    nullable=False,
+)

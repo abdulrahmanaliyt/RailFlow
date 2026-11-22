@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -14,7 +13,7 @@ from app.services import train_schedule_service
 
 router = APIRouter(
     prefix="/schedules",
-    tags=["Schedules"]
+    tags=["Schedules"],
 )
 
 
@@ -24,32 +23,32 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
     summary="Create a train schedule",
     description="Creates a dated journey for an existing route.",
-    response_description="The newly created train schedule."
+    response_description="The newly created train schedule.",
 )
 def create_schedule(
     data: TrainScheduleCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     try:
         return train_schedule_service.create_schedule(db, data)
 
     except LookupError as exc:
         raise HTTPException(
-        status_code=404,
-        detail=str(exc)
-    )
-    
+            status_code=404,
+            detail=str(exc),
+        )
+
     except ValueError as exc:
         raise HTTPException(
-            status_code=400,
-            detail=str(exc)
+            status_code=422,
+            detail=str(exc),
         )
 
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=409,
-            detail="A schedule already exists for this route and departure time."
+            detail="A schedule already exists for this route and departure time.",
         )
 
 
@@ -58,7 +57,7 @@ def create_schedule(
     response_model=list[TrainScheduleResponse],
     summary="Get all schedules",
     description="Returns all train schedules ordered by departure time.",
-    response_description="List of train schedules."
+    response_description="List of train schedules.",
 )
 def get_all_schedules(db: Session = Depends(get_db)):
     return train_schedule_service.get_all_schedules(db)
@@ -72,14 +71,14 @@ def get_all_schedules(db: Session = Depends(get_db)):
 )
 def get_schedules_by_route(
     route_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     if not train_schedule_service.route_exists(db, route_id):
         raise HTTPException(
             status_code=404,
-            detail="Train route not found"
+            detail="Train route not found",
         )
-        
+
     schedules = train_schedule_service.get_schedules_by_route(
         db, route_id
     )
@@ -92,11 +91,11 @@ def get_schedules_by_route(
     response_model=TrainScheduleResponse,
     summary="Get a schedule",
     description="Finds a scheduled journey by its ID.",
-    response_description="The requested train schedule."
+    response_description="The requested train schedule.",
 )
 def get_schedule(
     schedule_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     schedule = train_schedule_service.get_schedule_by_id(
         db, schedule_id
@@ -105,7 +104,7 @@ def get_schedule(
     if schedule is None:
         raise HTTPException(
             status_code=404,
-            detail="Train schedule not found"
+            detail="Train schedule not found",
         )
 
     return schedule
@@ -116,12 +115,12 @@ def get_schedule(
     response_model=TrainScheduleResponse,
     summary="Update a schedule",
     description="Updates the date, departure, arrival and status of a schedule.",
-    response_description="The updated train schedule."
+    response_description="The updated train schedule.",
 )
 def update_schedule(
     schedule_id: int,
     data: TrainScheduleUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     try:
         schedule = train_schedule_service.update_schedule(
@@ -131,14 +130,26 @@ def update_schedule(
         if schedule is None:
             raise HTTPException(
                 status_code=404,
-                detail="Train schedule not found"
+                detail="Train schedule not found",
             )
 
         return schedule
+
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        )
 
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=409,
-            detail="The updated schedule conflicts with another schedule."
+            detail="The updated schedule conflicts with another schedule.",
         )

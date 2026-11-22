@@ -14,6 +14,7 @@ from app.api.cancellations import router as cancellation_router
 from app.api.admin import router as admin_router
 from app.api.admin_stations import router as admin_stations_router
 from app.api.admin_trains import router as admin_train_router
+from app.api.admin_routes import router as admin_route_router
 
 tags_metadata = [
     {
@@ -75,6 +76,10 @@ tags_metadata = [
         "name": "Seat Availability",
         "description": "Check seat availability for a particular train journey.",
     },
+    {
+    "name": "Admin Routes",
+    "description": "Admin-only route creation, updates, and activation controls.",
+    },
 ]
 
 app = FastAPI(
@@ -113,6 +118,7 @@ app.include_router(auth_router)
 app.include_router(station_router)
 app.include_router(admin_stations_router)
 app.include_router(admin_train_router)
+app.include_router(admin_route_router)
 app.include_router(train_router)
 app.include_router(route_router)
 app.include_router(route_stop_router)
