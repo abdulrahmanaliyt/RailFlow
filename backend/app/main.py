@@ -1,19 +1,25 @@
 from fastapi import FastAPI
 
-from app.api import inventory, route_segments
+from app.api import availability, inventory, route_segments
+from app.api.auth import router as auth_router
 from app.api.route_stops import router as route_stop_router
 from app.api.routes import router as route_router
 from app.api.search import router as search_router
 from app.api.stations import router as station_router
 from app.api.train_schedules import router as schedule_router
 from app.api.trains import router as train_router
-from app.api import availability
+from app.api.bookings import router as booking_router
+from app.api.payments import router as payment_router
 
 
 tags_metadata = [
     {
         "name": "General",
         "description": "Service health and welcome endpoints.",
+    },
+    {
+        "name": "Authentication",
+        "description": "User registration, login, and authentication.",
     },
     {
         "name": "Stations",
@@ -41,10 +47,6 @@ tags_metadata = [
     {
         "name": "Bookings",
         "description": "Manage passenger reservations.",
-    },
-    {
-        "name": "Authentication",
-        "description": "User registration, login, and authentication.",
     },
     {
         "name": "Train Search",
@@ -85,16 +87,6 @@ FastAPI, SQLAlchemy, and PostgreSQL.
     openapi_tags=tags_metadata,
 )
 
-app.include_router(station_router)
-app.include_router(train_router)
-app.include_router(route_router)
-app.include_router(route_stop_router)
-app.include_router(schedule_router)
-app.include_router(search_router)
-app.include_router(inventory.router)
-app.include_router(route_segments.router)
-app.include_router(availability.router)
-
 
 @app.get(
     "/",
@@ -104,3 +96,17 @@ app.include_router(availability.router)
 )
 def root() -> dict[str, str]:
     return {"message": "Welcome to RailFlow API"}
+
+
+app.include_router(auth_router)
+app.include_router(station_router)
+app.include_router(train_router)
+app.include_router(route_router)
+app.include_router(route_stop_router)
+app.include_router(schedule_router)
+app.include_router(search_router)
+app.include_router(inventory.router)
+app.include_router(route_segments.router)
+app.include_router(availability.router)
+app.include_router(booking_router)
+app.include_router(payment_router)

@@ -12,7 +12,7 @@ from app.models.route_segment import RouteSegment
 from app.models.booking import Booking
 from app.models.booking_passenger import BookingPassenger
 from app.models.seat_segment_reservation import SeatSegmentReservation
-
+from app.models.payment import Payment
 
 __all__ = [
     "User",
@@ -27,4 +27,5 @@ __all__ = [
     "Booking",
     "BookingPassenger",
     "SeatSegmentReservation",
+    "Payment"
 ]

@@ -1,16 +1,18 @@
-from sqlalchemy import and_, func, select, update
+from datetime import datetime, timezone
+
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from app.models.booking import Booking
+from app.models.coach import Coach
+from app.models.route_segment import RouteSegment
+from app.models.route_stop import RouteStop
+from app.models.seat import Seat
+from app.models.seat_segment_reservation import SeatSegmentReservation
 from app.models.station import Station
 from app.models.train import Train
 from app.models.train_route import TrainRoute
 from app.models.train_schedule import TrainSchedule
-from app.models.route_stop import RouteStop
-from app.models.route_segment import RouteSegment
-from app.models.coach import Coach
-from app.models.seat import Seat
-from app.models.seat_segment_reservation import SeatSegmentReservation
-
 
 ACTIVE_RESERVATION_STATUSES = ("HELD", "CONFIRMED")
 
@@ -55,9 +57,7 @@ def get_station(db: Session, station_code: str):
     normalized_code = station_code.strip().upper()
 
     station = db.scalar(
-        select(Station).where(
-            Station.station_code == normalized_code
-        )
+        select(Station).where(Station.station_code == normalized_code)
     )
 
     if not station:
@@ -130,10 +130,7 @@ def get_required_segments(
     ).all()
 
     actual_pairs = [
-        (
-            segment.from_route_stop_id,
-            segment.to_route_stop_id,
-        )
+        (segment.from_route_stop_id, segment.to_route_stop_id)
         for segment in segments
     ]
 
@@ -162,27 +159,63 @@ def get_required_segments(
     return required_segment_ids
 
 
-def expire_old_holds(db: Session, schedule_id: int):
+def expire_booking_holds(db: Session, schedule_id: int | None = None) -> int:
     """
-    Mark expired HELD reservations as EXPIRED.
+    Expire HELD seat reservations whose expires_at timestamp has passed,
+    and cancel PENDING_PAYMENT bookings that no longer have any active HELD holds.
 
-    The partial unique index still considers HELD rows active,
-    regardless of their expiry timestamp. Updating their status
-    is necessary before those seats can be allocated again.
+    Does NOT commit by itself so callers control transaction boundaries.
     """
+    now = datetime.now(timezone.utc)
 
-    db.execute(
+    hold_stmt = (
         update(SeatSegmentReservation)
         .where(
-            SeatSegmentReservation.schedule_id == schedule_id,
             SeatSegmentReservation.status == "HELD",
             SeatSegmentReservation.expires_at.is_not(None),
-            SeatSegmentReservation.expires_at <= func.now(),
+            SeatSegmentReservation.expires_at <= now,
         )
-        .values(status="EXPIRED")
+        .values(
+            status="EXPIRED",
+            expires_at=None,
+        )
     )
 
-    db.commit()
+    if schedule_id is not None:
+        hold_stmt = hold_stmt.where(
+            SeatSegmentReservation.schedule_id == schedule_id
+        )
+
+    result = db.execute(hold_stmt)
+
+    bookings_with_active_holds = select(
+        SeatSegmentReservation.booking_id
+    ).where(
+        SeatSegmentReservation.booking_id.is_not(None),
+        SeatSegmentReservation.status == "HELD",
+        SeatSegmentReservation.expires_at.is_not(None),
+        SeatSegmentReservation.expires_at > now,
+    )
+
+    booking_stmt = (
+        update(Booking)
+        .where(
+            Booking.status == "PENDING_PAYMENT",
+            ~Booking.id.in_(bookings_with_active_holds),
+        )
+        .values(status="CANCELLED")
+    )
+
+    if schedule_id is not None:
+        booking_stmt = booking_stmt.where(
+            Booking.schedule_id == schedule_id
+        )
+
+    db.execute(booking_stmt)
+
+    return result.rowcount
+
+expire_old_holds = expire_booking_holds
 
 
 def get_available_seats(
@@ -242,16 +275,13 @@ def get_available_seats(
         destination_stop=destination_stop,
     )
 
-    # Expire old holds before checking active reservations.
-    # This is necessary because the partial unique index uses status,
-    # not the expiry timestamp.
     try:
-        expire_old_holds(db, schedule.id)
+        expire_booking_holds(db, schedule.id)
+        db.commit()
     except Exception:
         db.rollback()
         raise
 
-    # Find seats having an active reservation on ANY required segment.
     active_reservation_exists = (
         select(SeatSegmentReservation.id)
         .where(
@@ -283,9 +313,7 @@ def get_available_seats(
     )
 
     if coach_type:
-        statement = statement.where(
-            Coach.coach_type == coach_type
-        )
+        statement = statement.where(Coach.coach_type == coach_type)
 
     rows = db.execute(statement).all()
 
