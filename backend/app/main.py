@@ -11,6 +11,8 @@ from app.api.trains import router as train_router
 from app.api.bookings import router as booking_router
 from app.api.payments import router as payment_router
 from app.api.cancellations import router as cancellation_router
+from app.api.admin import router as admin_router
+
 
 tags_metadata = [
     {
@@ -111,3 +113,4 @@ app.include_router(availability.router)
 app.include_router(booking_router)
 app.include_router(payment_router)
 app.include_router(cancellation_router)
+app.include_router(admin_router)
