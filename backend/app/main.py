@@ -21,6 +21,7 @@ from app.api.schedules import router as schedules_router
 from app.api.search import router as search_router
 from app.api.stations import router as station_router
 from app.api.train_schedules import router as schedule_router
+from app.api.train_search import router as train_search_router
 from app.api.trains import router as train_router
 
 logger = logging.getLogger("railflow.main")
@@ -99,7 +100,7 @@ tags_metadata = [
     },
     {
         "name": "Train Search",
-        "description": "Search scheduled trains between two stations.",
+        "description": "Search scheduled trains between railway stations.",
     },
     {
         "name": "Inventory",
@@ -173,7 +174,7 @@ routers = [
     admin_schedules_router,
     schedules_router,
     schedule_router,
-    search_router,
+    train_search_router,
     inventory.router,
     route_segments.router,
     availability.router,
