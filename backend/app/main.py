@@ -1,4 +1,9 @@
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import configure_mappers
 
 from app.api import availability, inventory, route_segments
 from app.api.admin import router as admin_router
@@ -12,10 +17,29 @@ from app.api.cancellations import router as cancellation_router
 from app.api.payments import router as payment_router
 from app.api.route_stops import router as route_stop_router
 from app.api.routes import router as route_router
+from app.api.schedules import router as schedules_router
 from app.api.search import router as search_router
 from app.api.stations import router as station_router
 from app.api.train_schedules import router as schedule_router
 from app.api.trains import router as train_router
+
+logger = logging.getLogger("railflow.main")
+
+try:
+    from app.api.admin_schedules import router as admin_schedules_router
+except ImportError as exc:
+    admin_schedules_router = None
+    logger.error("Failed to import admin_schedules_router: %s", exc)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    try:
+        configure_mappers()
+    except SQLAlchemyError as exc:
+        logger.error("SQLAlchemy mapper configuration error on startup: %s", exc)
+    yield
+
 
 tags_metadata = [
     {
@@ -62,8 +86,12 @@ tags_metadata = [
         "description": "Admin-only management of stations and sequence within routes.",
     },
     {
+        "name": "Admin Schedules",
+        "description": "Admin-only schedule management and lifecycle controls.",
+    },
+    {
         "name": "Schedules",
-        "description": "Manage scheduled train journeys.",
+        "description": "Public train schedule discovery.",
     },
     {
         "name": "Bookings",
@@ -84,6 +112,18 @@ tags_metadata = [
     {
         "name": "Seat Availability",
         "description": "Check seat availability for a particular train journey.",
+    },
+    {
+        "name": "Payments",
+        "description": "Process booking payments and inspect payment history.",
+    },
+    {
+        "name": "Cancellations",
+        "description": "Cancel individual passengers or entire bookings.",
+    },
+    {
+        "name": "Admin",
+        "description": "Administrative overview and dashboard endpoints.",
     },
 ]
 
@@ -106,6 +146,7 @@ FastAPI, SQLAlchemy, and PostgreSQL.
 """,
     version="1.0.0",
     openapi_tags=tags_metadata,
+    lifespan=lifespan,
 )
 
 
@@ -119,21 +160,29 @@ def root() -> dict[str, str]:
     return {"message": "Welcome to RailFlow API"}
 
 
-app.include_router(auth_router)
-app.include_router(station_router)
-app.include_router(admin_stations_router)
-app.include_router(admin_train_router)
-app.include_router(admin_route_router)
-app.include_router(train_router)
-app.include_router(route_router)
-app.include_router(route_stop_router)
-app.include_router(admin_route_stops_router)
-app.include_router(schedule_router)
-app.include_router(search_router)
-app.include_router(inventory.router)
-app.include_router(route_segments.router)
-app.include_router(availability.router)
-app.include_router(booking_router)
-app.include_router(payment_router)
-app.include_router(cancellation_router)
-app.include_router(admin_router)
+routers = [
+    auth_router,
+    station_router,
+    admin_stations_router,
+    admin_train_router,
+    admin_route_router,
+    train_router,
+    route_router,
+    route_stop_router,
+    admin_route_stops_router,
+    admin_schedules_router,
+    schedules_router,
+    schedule_router,
+    search_router,
+    inventory.router,
+    route_segments.router,
+    availability.router,
+    booking_router,
+    payment_router,
+    cancellation_router,
+    admin_router,
+]
+
+for router in routers:
+    if router is not None:
+        app.include_router(router)

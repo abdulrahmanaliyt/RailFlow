@@ -3,24 +3,20 @@ from secrets import choice
 from string import ascii_uppercase, digits
 
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from app.models.booking import Booking
 from app.models.booking_passenger import BookingPassenger
 from app.models.seat_segment_reservation import SeatSegmentReservation
-
 from app.models.train_schedule import TrainSchedule
 from app.models.train_route import TrainRoute
 from app.models.train import Train
-
 from app.models.route_stop import RouteStop
 from app.models.route_segment import RouteSegment
-
 from app.models.station import Station
 from app.models.coach import Coach
 from app.models.seat import Seat
-
 from app.models.user import User
 
 
@@ -81,8 +77,8 @@ def get_valid_schedule(
         )
 
     if schedule.status != "SCHEDULED":
-        raise BookingConflictError(
-            "This train schedule is not available for booking."
+        raise BookingValidationError(
+            "Bookings are allowed only for scheduled journeys."
         )
 
     route = db.get(
@@ -93,6 +89,11 @@ def get_valid_schedule(
     if route is None:
         raise BookingConflictError(
             "The route associated with this schedule no longer exists."
+        )
+
+    if not route.is_active:
+        raise BookingValidationError(
+            "Cannot book a schedule on an inactive route."
         )
 
     train = db.get(
