@@ -26,5 +26,7 @@ class TrainSearchResult(BaseModel):
     scheduled_arrival_at: datetime
 
     status: str
+    
+    available_seats: int
 
     model_config = ConfigDict(from_attributes=True)

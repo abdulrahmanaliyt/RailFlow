@@ -9,6 +9,7 @@ from app.models import (
     TrainSchedule,
 )
 from app.schemas.train_search import TrainSearchResult
+from app.services.availability_service import get_available_seats
 
 
 def search_trains(
@@ -136,6 +137,14 @@ def search_trains(
             destination_station,
         ) = row
 
+        availability = get_available_seats(
+            db=db,
+            schedule_id=schedule.id,
+            origin_code=origin_station.station_code,
+            destination_code=destination_station.station_code,
+        )
+
+        # Keep schedules even when available_seat_count == 0
         response.append(
             TrainSearchResult(
                 schedule_id=schedule.id,
@@ -157,6 +166,7 @@ def search_trains(
                     schedule.scheduled_arrival_at
                 ),
                 status=schedule.status,
+                available_seats=availability["available_seat_count"],
             )
         )
 
