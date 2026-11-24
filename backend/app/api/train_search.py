@@ -6,6 +6,12 @@ from sqlalchemy.orm import Session
 from app.dependencies import get_db
 from app.schemas.train_search import TrainSearchResult
 from app.services import train_search_service
+from app.services.availability_service import (
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
+
 
 router = APIRouter(
     prefix="/search",
@@ -58,13 +64,18 @@ def search_trains_endpoint(
             limit=limit,
             offset=offset,
         )
-    except LookupError as exc:
+    except (LookupError, NotFoundError) as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    except ValueError as exc:
+    except (ValueError, ValidationError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except ConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc

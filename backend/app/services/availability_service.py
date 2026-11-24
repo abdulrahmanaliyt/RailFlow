@@ -70,6 +70,7 @@ def get_station(db: Session, station_code: str):
 
     return station
 
+
 def get_journey_stops(
     db: Session,
     route_id: int,
@@ -217,6 +218,7 @@ def expire_booking_holds(db: Session, schedule_id: int | None = None) -> int:
 
     return result.rowcount
 
+
 expire_old_holds = expire_booking_holds
 
 
@@ -277,6 +279,7 @@ def get_available_seats(
         destination_stop=destination_stop,
     )
 
+    # Kept until the hold-expiry mechanism outside read-only search is verified.
     try:
         expire_booking_holds(db, schedule.id)
         db.commit()
